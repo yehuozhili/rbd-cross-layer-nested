@@ -3,10 +3,11 @@ import { Droppable, Draggable } from "react-beautiful-dnd";
 import { getItemStyle, getAnswerListStyle } from "./utils";
 
 export const Answers = (props: any) => {
-	const { question, questionNum, action } = props;
+	const { question, questionNum, action, index: ins } = props;
 	return (
 		<Droppable
-			droppableId={`droppable${question.id}`}
+			key={question.id}
+			droppableId={`${ins}`}
 			type={`hello`}
 			isDropDisabled={action === "inner"}
 		>
@@ -33,10 +34,10 @@ export const Answers = (props: any) => {
 									>
 										<span {...provided.dragHandleProps}>
 											<div style={{ float: "left" }}>
-												answer
+												{answer.id}
 											</div>
 										</span>
-										{answer}
+										{answer.content}
 									</div>
 								)}
 							</Draggable>
