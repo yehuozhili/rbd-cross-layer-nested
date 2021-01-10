@@ -1,26 +1,31 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from "react";
+import logo from "./logo.svg";
+import "./App.css";
+import Questions from "./questions";
+import MyDemo from "./my";
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+	const [state, setState] = useState("top");
+	return (
+		<div className="App">
+			<div>12313</div>
+			<button
+				onClick={() => {
+					setState("top");
+				}}
+			>
+				切换顶层
+			</button>
+			<button
+				onClick={() => {
+					setState("inner");
+				}}
+			>
+				切换内层
+			</button>
+			<MyDemo action={state}></MyDemo>
+		</div>
+	);
 }
 
 export default App;
