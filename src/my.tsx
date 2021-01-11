@@ -5,8 +5,55 @@ import {
 	Draggable,
 	DropResult,
 } from "react-beautiful-dnd";
-import Answers from "./answer";
-import { Reorder } from "./utils";
+import { Reorder, getAnswerListStyle } from "./utils";
+
+export const InnerItem = (props: any) => {
+	const { item, index: ins, action } = props;
+	return (
+		<Droppable
+			key={item.id}
+			droppableId={`${item.id}`}
+			isDropDisabled={action === "inner"}
+		>
+			{(provided, snapshot) => {
+				console.log(provided, snapshot);
+				return (
+					<div
+						ref={provided.innerRef}
+						style={getAnswerListStyle(snapshot.isDraggingOver)}
+					>
+						{item.children.map((v: any, index: number) => {
+							return (
+								<Draggable
+									key={`${ins}${index}`}
+									draggableId={`${ins}${index}`}
+									index={index}
+								>
+									{(provided, snapshot) => (
+										<div
+											ref={provided.innerRef}
+											{...provided.draggableProps}
+											style={getItemStyle(
+												snapshot.isDragging,
+												provided.draggableProps.style
+											)}
+										>
+											<span {...provided.dragHandleProps}>
+												<div style={{ float: "left" }}>{v.id}</div>
+											</span>
+											{v.content}
+										</div>
+									)}
+								</Draggable>
+							);
+						})}
+						{provided.placeholder}
+					</div>
+				);
+			}}
+		</Droppable>
+	);
+};
 
 const item = (str: string) => {
 	return {
@@ -16,7 +63,7 @@ const item = (str: string) => {
 	};
 };
 
-const data = [item("0"), item("1"), item("2")];
+const data = [item("0"), item("1"), item("2"), item("3")];
 
 const grid = 6;
 export const getItemStyle = (isDragging: boolean, draggableStyle: any) => {
@@ -58,12 +105,21 @@ const toSplice = (result: DropResult, state: Array<any>, source: any) => {
 		return state.splice(result.source.index, 1);
 	} else {
 		//否则是内层remove
-		// 需要找到哪个内层，通过dropid获取
-		// 此处还需要排除自己的内层。暂未实现
-		return state[Number(result.source!.droppableId)].children.splice(
-			result.source.index,
-			1
-		);
+		// 需要找到哪个内层
+		const id = result.source.droppableId; //通过id查找索引，这个id应该在某个外层的children下面，去查外层的索引
+		let index = null;
+		state.find((v, ins) => {
+			if (v.id === id) {
+				index = ins;
+			}
+			return v.id === id;
+		});
+		console.log(index, "index");
+		if (index !== null) {
+			return state[index].children.splice(result.source.index, 1);
+		} else {
+			return null;
+		}
 	}
 };
 const toAddItem = (
@@ -74,62 +130,90 @@ const toAddItem = (
 	addItem: any
 ) => {
 	//如果是wrapper说明第一层
-	console.log(target);
+	console.log(addItem);
 	if (target) {
 		state.splice(result.destination!.index, 0, addItem);
 		return state;
 	} else {
 		//否则是内层add
-		// 需要找到哪个内层，通过dropid获取
 		// 此处还需要排除自己的内层。暂未实现
-		// 此处需要判断外层索引是否变化
-
-		// 需要比较大小，如果目标索引大于不能等于删除的索引 目标索引要减一
-		let index;
-		if (
-			source &&
-			result.source.index < Number(result.destination!.droppableId)
-		) {
-			//如果时第一层减少，那么需要判断索引变化
-			index = Number(result.destination!.droppableId) - 1;
-		} else {
-			index = Number(result.destination!.droppableId);
+		let index = null;
+		const id = result.destination!.droppableId;
+		state.find((v, ins) => {
+			if (v.id === id) {
+				index = ins;
+			}
+			return v.id === id;
+		});
+		console.log(index, "addindex");
+		if (index !== null) {
+			return state[index].children.splice(
+				result.destination!.index,
+				0,
+				addItem
+			);
 		}
-
-		state[index].children.splice(result.destination!.index, 0, addItem);
 		return state;
 	}
 };
 
 const situationResolve = (result: DropResult, state: Array<any>) => {
 	const sign = judgeResult(result);
-	console.log(sign);
 	switch (sign) {
 		case -1:
 			//内层
 			//先判断哪个列表
-			// const id = result.destination?.droppableId
-			// const answers = Reorder(
-			// 	state[].children,
-			// 	result.source.index,
-			// 	result.destination!.index
-			// );
-			break;
+			console.log("同内层");
+			// 同内层有可能是跨内层或者在同一个内层。
+			// 删除时分别判断destination与source在哪个外层索引。
+			const sourceid = result.source!.droppableId;
+			let sourceindex: number | null = null;
+			const targetid = result.destination!.droppableId;
+			let targetindex: number | null = null;
+			state.map((v, ins) => {
+				if (v.id === sourceid) {
+					sourceindex = ins;
+				}
+				if (v.id === targetid) {
+					targetindex = ins;
+				}
+				return v;
+			});
+			console.log(sourceindex, targetindex);
+			if (sourceindex === null || targetindex === null) {
+				//目标元素或者拖拽元素有个不在二级嵌套内  暂不考虑此情况
+				return state;
+			} else {
+				const [remove] = state[sourceindex].children.splice(
+					result.source.index,
+					1
+				);
+				state[targetindex].children.splice(
+					result.destination!.index,
+					0,
+					remove
+				);
+				console.log(state);
+
+				return state;
+			}
+
 		case 1:
 			const source = regexp.exec(result.source.droppableId);
 			const target = regexp.exec(result.destination!.droppableId);
 			//先把source里的拿出来result.source.index,
-			const [remove] = toSplice(result, state, source);
-			//remove后添加进对应的destination
-			console.log(remove);
-			return toAddItem(result, state, target, source, remove);
-
+			const x = toSplice(result, state, source);
+			if (x) {
+				const [remove] = x;
+				// remove后添加进对应的destination
+				console.log(remove, "remove");
+				toAddItem(result, state, target, source, remove);
+				return state;
+			}
+			// 没有删除直接返回原样
+			return state;
 		case 0:
-			return Reorder(
-				state,
-				result.source.index,
-				result.destination!.index
-			);
+			return Reorder(state, result.source.index, result.destination!.index);
 	}
 };
 
@@ -142,12 +226,16 @@ function MyDemo(props: { action: string }) {
 		if (!result.destination) {
 			return;
 		}
+		if (result.draggableId === result.destination.droppableId) {
+			//内部嵌套
+			return;
+		}
 		const newState = situationResolve(result, state);
-		console.log(newState);
+		console.log(newState, "newstate");
 		//setState(newState);
-		// if (newState) {
-		// 	setState(newState);
-		// }
+		if (newState) {
+			setState(newState);
+		}
 		console.log(result.type);
 	};
 	return (
@@ -155,26 +243,19 @@ function MyDemo(props: { action: string }) {
 			<DragDropContext onDragEnd={onDragEnd}>
 				<Droppable
 					droppableId="wrapper"
-					type="hello"
 					isDropDisabled={props.action === "top"}
 				>
 					{(provided, snapshot) => (
 						<div
 							ref={provided.innerRef}
 							style={{
-								background: snapshot.isDraggingOver
-									? "lightblue"
-									: "lightgrey",
+								background: snapshot.isDraggingOver ? "lightblue" : "lightgrey",
 								padding: 8,
 								width: 500,
 							}}
 						>
-							{state.map((question: any, index: number) => (
-								<Draggable
-									key={question.id}
-									draggableId={question.id}
-									index={index}
-								>
+							{state.map((value: any, index: number) => (
+								<Draggable key={value.id} draggableId={value.id} index={index}>
 									{(provided, snapshot) => (
 										<div
 											ref={provided.innerRef}
@@ -184,21 +265,20 @@ function MyDemo(props: { action: string }) {
 												provided.draggableProps.style
 											)}
 										>
-											{question.content}
+											{value.content}
 											<span {...provided.dragHandleProps}>
 												<div
 													style={{
 														float: "left",
 													}}
 												>
-													{question.content}
+													{value.content}
 												</div>
 											</span>
-											<Answers
+											<InnerItem
 												index={index}
 												action={props.action}
-												questionNum={index}
-												question={question}
+												item={value}
 											/>
 										</div>
 									)}

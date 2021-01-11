@@ -1,7 +1,5 @@
 import React, { useState } from "react";
-import logo from "./logo.svg";
 import "./App.css";
-import Questions from "./questions";
 import MyDemo from "./my";
 
 function App() {
@@ -14,14 +12,14 @@ function App() {
 					setState("top");
 				}}
 			>
-				切换顶层
+				切换内层拖拽
 			</button>
 			<button
 				onClick={() => {
 					setState("inner");
 				}}
 			>
-				切换内层
+				切换外层拖拽
 			</button>
 			<MyDemo action={state}></MyDemo>
 		</div>
